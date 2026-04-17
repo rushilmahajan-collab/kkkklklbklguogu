@@ -1,12 +1,14 @@
-import anthropic
-from typing import List, Optional, AsyncIterator
+from openai import AsyncOpenAI
+from typing import Optional, AsyncIterator
 from sqlalchemy.orm import Session
 from app.models.agent import Agent
 from app.models.conversation import Conversation, Message
 from app.core.config import settings
-import uuid
 
-client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY or "placeholder")
+client = AsyncOpenAI(
+    api_key=settings.DEEPSEEK_API_KEY or "placeholder",
+    base_url=settings.DEEPSEEK_BASE_URL,
+)
 
 
 def build_system_prompt(agent: Agent, user_name: str, company_name: str) -> str:
@@ -60,19 +62,16 @@ async def chat_with_agent(
     db.add(user_msg)
     db.commit()
 
-    # Build messages for Claude
-    messages = history + [{"role": "user", "content": user_message + context_addition}]
-
     system_prompt = build_system_prompt(agent, user_name, company_name)
+    messages = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": user_message + context_addition}]
 
     try:
-        response = await client.messages.create(
-            model="claude-opus-4-6",
+        response = await client.chat.completions.create(
+            model=settings.DEEPSEEK_MODEL,
             max_tokens=1024,
-            system=system_prompt,
             messages=messages,
         )
-        assistant_content = response.content[0].text
+        assistant_content = response.choices[0].message.content or ""
     except Exception as e:
         assistant_content = f"I apologize, I'm having trouble connecting right now. Error: {str(e)}"
 
@@ -114,18 +113,20 @@ async def stream_chat_with_agent(
     db.add(user_msg)
     db.commit()
 
-    messages = history + [{"role": "user", "content": user_message}]
     system_prompt = build_system_prompt(agent, user_name, company_name)
+    messages = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": user_message}]
 
     full_response = ""
     try:
-        async with client.messages.stream(
-            model="claude-opus-4-6",
+        stream = await client.chat.completions.create(
+            model=settings.DEEPSEEK_MODEL,
             max_tokens=1024,
-            system=system_prompt,
             messages=messages,
-        ) as stream:
-            async for text in stream.text_stream:
+            stream=True,
+        )
+        async for chunk in stream:
+            text = chunk.choices[0].delta.content or ""
+            if text:
                 full_response += text
                 yield text
     except Exception as e:
