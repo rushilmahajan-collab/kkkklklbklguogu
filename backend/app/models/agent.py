@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, JSON, Integer
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 import uuid
 from app.core.database import Base
@@ -43,4 +43,8 @@ class Agent(Base):
 
     user = relationship("User", back_populates="agents")
     conversations = relationship("Conversation", back_populates="agent", cascade="all, delete-orphan")
-    direct_reports = relationship("Agent", backref="manager", foreign_keys=[parent_agent_id])
+    direct_reports = relationship(
+        "Agent",
+        foreign_keys=[parent_agent_id],
+        backref=backref("manager", remote_side="Agent.id"),
+    )
