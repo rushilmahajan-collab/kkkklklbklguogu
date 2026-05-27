@@ -1,13 +1,36 @@
-import React from 'react';
-import { performAction, getAvailableActions } from '../gameState';
+import React, { useState } from 'react';
+import { performAction, getAvailableActions, buyBusiness, sellBusiness } from '../gameState';
+import { PortfolioCard } from './PortfolioCard';
+import { BusinessesCard } from './BusinessesCard';
+import { BusinessBrowser } from './BusinessBrowser';
 
 export const MainGameScreen = ({ state, onAdvanceYear, onStateChange }) => {
+  const [showBusinessBrowser, setShowBusinessBrowser] = useState(false);
+
   const availableActions = getAvailableActions(state);
   const canAct = state.actionsUsed < state.actionSlots;
   const slotsRemaining = state.actionSlots - state.actionsUsed;
 
   const handleAction = (actionId) => {
+    if (actionId === 'buyBusiness') {
+      setShowBusinessBrowser(true);
+      return;
+    }
+    if (actionId === 'sellBusiness') {
+      // This is handled per-business via the BusinessesCard
+      return;
+    }
     const newState = performAction(state, actionId);
+    onStateChange(newState);
+  };
+
+  const handleBuyBusiness = (business) => {
+    const newState = buyBusiness(state, business);
+    onStateChange(newState);
+  };
+
+  const handleSellBusiness = (businessId) => {
+    const newState = sellBusiness(state, businessId);
     onStateChange(newState);
   };
 
@@ -79,6 +102,22 @@ export const MainGameScreen = ({ state, onAdvanceYear, onStateChange }) => {
           ))}
         </div>
 
+        {/* Portfolio */}
+        <PortfolioCard
+          portfolio={state.portfolio}
+          clcIndex={state.clcIndex}
+          lastClcValue={state.lastClcValue}
+          marketHistory={state.marketHistory}
+          marketNews={state.marketNews}
+          lastMarketReturn={state.lastMarketReturn}
+        />
+
+        {/* Businesses */}
+        <BusinessesCard
+          businesses={state.businesses}
+          onSellBusiness={handleSellBusiness}
+        />
+
         {/* Status */}
         <div className="card mb-4 text-xs">
           <div className="mb-2">
@@ -131,6 +170,14 @@ export const MainGameScreen = ({ state, onAdvanceYear, onStateChange }) => {
           End Year →
         </button>
       </div>
+
+      {showBusinessBrowser && (
+        <BusinessBrowser
+          state={state}
+          onBuyBusiness={handleBuyBusiness}
+          onClose={() => setShowBusinessBrowser(false)}
+        />
+      )}
     </div>
   );
 };

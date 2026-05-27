@@ -78,6 +78,16 @@ const LIFE_EVENTS = [
   },
 ];
 
+const generateMarketReturn = () => {
+  const rand = Math.random();
+  if (rand < 0.05) return -0.25 - Math.random() * 0.15; // crash
+  if (rand < 0.15) return -0.10 - Math.random() * 0.15; // bear
+  if (rand < 0.30) return -0.05 + Math.random() * 0.07; // flat/down
+  if (rand < 0.70) return 0.05 + Math.random() * 0.1; // normal
+  if (rand < 0.90) return 0.15 + Math.random() * 0.1; // bull
+  return 0.25 + Math.random() * 0.15; // euphoria
+};
+
 export const createInitialState = (playerName, career) => ({
   screen: 'game',
   playerName,
@@ -97,6 +107,11 @@ export const createInitialState = (playerName, career) => ({
     crypto: 0,
     pennies: {},
   },
+  clcIndex: 1000,
+  lastClcValue: 1000,
+  marketHistory: [1000],
+  lastMarketReturn: 0,
+  marketNews: 'Welcome to the market. Your journey begins here.',
 
   // Stats (0-100)
   stress: CAREERS[career].stress,
@@ -113,6 +128,44 @@ export const createInitialState = (playerName, career) => ({
 
 export const advanceYear = (state) => {
   const event = selectRandomEvent(state);
+  const marketReturn = generateMarketReturn();
+  const newClcValue = Math.floor(state.clcIndex * (1 + marketReturn));
+  const actualReturn = (newClcValue - state.clcIndex) / state.clcIndex;
+
+  // Update portfolio values based on market performance
+  const updatedPortfolio = {
+    indexFund: Math.floor(state.portfolio.indexFund * (1 + actualReturn)),
+    stocks: Object.fromEntries(
+      Object.entries(state.portfolio.stocks).map(([key, val]) => [
+        key,
+        Math.floor(val * (1 + actualReturn + (Math.random() - 0.5) * 0.1))
+      ])
+    ),
+    bonds: state.portfolio.bonds,
+    crypto: Math.floor(state.portfolio.crypto * (1 + (Math.random() - 0.5) * 0.4)),
+    pennies: Object.fromEntries(
+      Object.entries(state.portfolio.pennies).map(([key, val]) => [
+        key,
+        Math.random() < 0.7 ? 0 : Math.floor(val * (2 + Math.random() * 4))
+      ])
+    ),
+  };
+
+  // Generate market news
+  let marketNews = '';
+  if (actualReturn > 0.15) {
+    marketNews = `Bull run incoming! CLC jumped ${(actualReturn * 100).toFixed(1)}%. Even your bad picks are making money.`;
+  } else if (actualReturn > 0.05) {
+    marketNews = `Steady gains. CLC up ${(actualReturn * 100).toFixed(1)}%. A quiet week on the markets.`;
+  } else if (actualReturn > 0) {
+    marketNews = `Flat day. CLC crawling up ${(actualReturn * 100).toFixed(1)}%. Nothing to see here.`;
+  } else if (actualReturn > -0.1) {
+    marketNews = `Minor pullback. CLC down ${Math.abs(actualReturn * 100).toFixed(1)}%. Don't panic.`;
+  } else if (actualReturn > -0.2) {
+    marketNews = `Market tumble. CLC dropped ${Math.abs(actualReturn * 100).toFixed(1)}%. Blood in the streets. Time to buy?`;
+  } else {
+    marketNews = `CRASH. CLC plummeted ${Math.abs(actualReturn * 100).toFixed(1)}%. Fortunes evaporating. This is a recession.`;
+  }
 
   let newState = {
     ...state,
@@ -122,6 +175,12 @@ export const advanceYear = (state) => {
     actionsUsed: 0,
     stress: Math.max(0, Math.min(100, state.stress - 5)),
     cash: state.cash + (state.employed ? state.salary / 12 * 12 : 0) - 3000,
+    portfolio: updatedPortfolio,
+    clcIndex: newClcValue,
+    lastClcValue: state.clcIndex,
+    lastMarketReturn: actualReturn,
+    marketNews,
+    marketHistory: [...state.marketHistory.slice(-9), newClcValue],
   };
 
   if (event) {
@@ -155,7 +214,8 @@ export const calculateNetWorth = (state) => {
 
   let businessEquity = 0;
   state.businesses.forEach(b => {
-    businessEquity += b.annualProfit * (b.exitMultiple || 2);
+    const multiple = b.exitMultiple.min + (b.exitMultiple.max - b.exitMultiple.min) * 0.5;
+    businessEquity += b.annualProfit * multiple;
   });
 
   return state.cash + portfolioValue + businessEquity - state.debt;
@@ -235,7 +295,77 @@ export const getAvailableActions = (state) => {
         desc: 'Leave corporate life and start your empire',
       });
     }
+  } else {
+    actions.push(
+      { id: 'buyBusiness', label: 'Buy Business', desc: 'Browse available businesses' },
+      { id: 'growBusiness', label: 'Grow Business', desc: 'Invest in an owned business' },
+    );
+
+    if (state.businesses.length > 0) {
+      actions.push({
+        id: 'sellBusiness',
+        label: 'Sell Business',
+        desc: 'Flip a business for profit',
+      });
+    }
+
+    if (state.age >= 30) {
+      actions.push({
+        id: 'goBackCorporate',
+        label: 'Go Back Corporate',
+        desc: 'Return to corporate (salary penalty)',
+      });
+    }
   }
 
   return actions;
+};
+
+export const buyBusiness = (state, business) => {
+  if (state.cash < business.buyPrice) return state;
+
+  return {
+    ...state,
+    cash: state.cash - business.buyPrice,
+    businesses: [
+      ...state.businesses,
+      {
+        ...business,
+        boughtAt: state.year,
+      },
+    ],
+  };
+};
+
+export const sellBusiness = (state, businessId) => {
+  const business = state.businesses.find(b => b.id === businessId);
+  if (!business) return state;
+
+  const salePrice = calculateSalePrice(business);
+
+  return {
+    ...state,
+    cash: state.cash + salePrice,
+    businesses: state.businesses.filter(b => b.id !== businessId),
+  };
+};
+
+export const growBusiness = (state, businessId, investAmount) => {
+  if (state.cash < investAmount) return state;
+
+  const business = state.businesses.find(b => b.id === businessId);
+  if (!business) return state;
+
+  const newCondition = Math.min(100, business.condition + Math.floor(investAmount / 100));
+  const newRevenue = Math.floor(business.annualRevenue * 1.05);
+
+  return {
+    ...state,
+    cash: state.cash - investAmount,
+    businesses: state.businesses.map(b =>
+      b.id === businessId
+        ? { ...b, condition: newCondition, annualRevenue: newRevenue, annualProfit: Math.floor(newRevenue * b.netMargin) }
+        : b
+    ),
+  };
 };
