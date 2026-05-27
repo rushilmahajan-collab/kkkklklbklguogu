@@ -287,6 +287,11 @@ export const advanceYear = (state) => {
     return sum + (monthlyProfit - managerCost);
   }, 0);
 
+  // Calculate dividends and interest from portfolio
+  const indexDividend = Math.floor(state.portfolio.indexFund * 0.02);
+  const bondInterest = Math.floor(Object.values(state.portfolio.bonds).reduce((a, b) => a + b, 0) * 0.04);
+  const portfolioIncome = indexDividend + bondInterest;
+
   let newState = {
     ...state,
     age: state.age + 1,
@@ -295,7 +300,7 @@ export const advanceYear = (state) => {
     actionsUsed: 0,
     stress: Math.max(0, Math.min(100, state.stress - 5)),
     happiness: Math.min(100, state.happiness + 2),
-    cash: state.cash + (state.employed ? state.salary : businessCashFlow * 12) - 3000,
+    cash: state.cash + (state.employed ? state.salary : businessCashFlow * 12) + portfolioIncome - 3000,
     portfolio: updatedPortfolio,
     businesses: businessList,
     clcIndex: newClcValue,
