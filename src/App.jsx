@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createInitialState, advanceYear, calculateNetWorth } from './gameState';
 import { CharacterCreationScreen } from './components/CharacterCreationScreen';
 import { MainGameScreen } from './components/MainGameScreen';
+import { GameOverScreen } from './components/GameOverScreen';
 import './index.css';
 
 export default function App() {
@@ -29,17 +30,28 @@ export default function App() {
     setGameState(newState);
   };
 
+  const handlePlayAgain = () => {
+    setGameState(null);
+    setScreen('character');
+  };
+
+  // Check for game over conditions
+  const isGameOver = gameState && (gameState.bankrupt || gameState.age > 99);
+
   return (
     <>
       {screen === 'character' && (
         <CharacterCreationScreen onStartGame={handleStartGame} />
       )}
-      {screen === 'game' && gameState && (
+      {screen === 'game' && gameState && !isGameOver && (
         <MainGameScreen
           state={gameState}
           onAdvanceYear={handleAdvanceYear}
           onStateChange={handleStateChange}
         />
+      )}
+      {screen === 'game' && gameState && isGameOver && (
+        <GameOverScreen state={gameState} onPlayAgain={handlePlayAgain} />
       )}
     </>
   );

@@ -7,7 +7,7 @@ const CAREERS = {
   'Operations Associate': { salary: 58000, stress: 30, growth: 'low' },
 };
 
-const LIFE_EVENTS = [
+const CORPORATE_EVENTS = [
   {
     name: 'Promotion',
     type: 'good',
@@ -76,7 +76,104 @@ const LIFE_EVENTS = [
     }),
     flavor: 'You\'re exhausted. Your soul left your body 3 months ago. Time to coast.',
   },
+  {
+    name: 'Market Rally',
+    type: 'good',
+    apply: (state) => ({
+      ...state,
+      happiness: Math.min(100, state.happiness + 10),
+    }),
+    flavor: 'The market is soaring. Your 401K balance just crossed six figures. Life is good.',
+  },
+  {
+    name: 'Recession Fears',
+    type: 'bad',
+    apply: (state) => ({
+      ...state,
+      stress: Math.min(100, state.stress + 15),
+      happiness: Math.max(0, state.happiness - 10),
+    }),
+    flavor: 'Everyone\'s talking about a recession. Your job security suddenly feels fragile.',
+  },
 ];
+
+const ENTREPRENEUR_EVENTS = [
+  {
+    name: 'Viral Success',
+    type: 'good',
+    apply: (state) => {
+      const bigBusiness = state.businesses[Math.floor(Math.random() * state.businesses.length)];
+      if (!bigBusiness) return state;
+      return {
+        ...state,
+        businesses: state.businesses.map(b =>
+          b.id === bigBusiness.id
+            ? { ...b, annualRevenue: Math.floor(b.annualRevenue * 1.3) }
+            : b
+        ),
+      };
+    },
+    flavor: 'One of your businesses exploded on social media. Revenue +30% this year.',
+  },
+  {
+    name: 'Lawsuit Incoming',
+    type: 'bad',
+    apply: (state) => ({
+      ...state,
+      cash: Math.max(0, state.cash - 25000),
+      stress: Math.min(100, state.stress + 20),
+    }),
+    flavor: 'A customer is suing. Legal fees are a nightmare. You\'re out $25K.',
+  },
+  {
+    name: 'Key Employee Quits',
+    type: 'bad',
+    apply: (state) => {
+      const targetBusiness = state.businesses[Math.floor(Math.random() * state.businesses.length)];
+      if (!targetBusiness) return state;
+      return {
+        ...state,
+        businesses: state.businesses.map(b =>
+          b.id === targetBusiness.id
+            ? { ...b, annualRevenue: Math.floor(b.annualRevenue * 0.85) }
+            : b
+        ),
+      };
+    },
+    flavor: 'Your best employee just quit to start a competitor. Revenue dips 15%.',
+  },
+  {
+    name: 'Unexpected Deal',
+    type: 'good',
+    apply: (state) => ({
+      ...state,
+      cash: state.cash + 50000,
+    }),
+    flavor: 'A corporate buyout of one of your suppliers. You negotiated a $50K bonus.',
+  },
+  {
+    name: 'System Failure',
+    type: 'bad',
+    apply: (state) => ({
+      ...state,
+      cash: Math.max(0, state.cash - 10000),
+      happiness: Math.max(0, state.happiness - 15),
+    }),
+    flavor: 'Your server crashed for 48 hours. Lost customers and $10K in emergency fixes.',
+  },
+  {
+    name: 'Investor Approaches',
+    type: 'good',
+    apply: (state) => ({
+      ...state,
+      connections: Math.min(100, state.connections + 20),
+      happiness: Math.min(100, state.happiness + 15),
+    }),
+    flavor: 'A VC partner saw your business and wants to talk. Your network just expanded.',
+  },
+];
+
+export const LIFE_EVENTS = [...CORPORATE_EVENTS];
 
 const generateMarketReturn = () => {
   const rand = Math.random();
@@ -167,6 +264,29 @@ export const advanceYear = (state) => {
     marketNews = `CRASH. CLC plummeted ${Math.abs(actualReturn * 100).toFixed(1)}%. Fortunes evaporating. This is a recession.`;
   }
 
+  // Degrade business condition and apply failure checks
+  let businessList = state.businesses.map(b => {
+    const degradation = 5 + Math.random() * 10;
+    const newCondition = Math.max(0, b.condition - degradation);
+
+    // Check for failure
+    const failureChance = b.failureRate * (1 - b.condition / 100);
+    const failed = Math.random() < failureChance;
+
+    if (failed) {
+      return { ...b, failed: true };
+    }
+
+    return { ...b, condition: newCondition };
+  }).filter(b => !b.failed);
+
+  // Calculate cash flow from businesses
+  const businessCashFlow = businessList.reduce((sum, b) => {
+    const monthlyProfit = (b.annualProfit * (b.condition / 100)) / 12;
+    const managerCost = b.manager ? (b.annualRevenue * b.managerCost) / 12 : 0;
+    return sum + (monthlyProfit - managerCost);
+  }, 0);
+
   let newState = {
     ...state,
     age: state.age + 1,
@@ -174,8 +294,10 @@ export const advanceYear = (state) => {
     currentEvent: event,
     actionsUsed: 0,
     stress: Math.max(0, Math.min(100, state.stress - 5)),
-    cash: state.cash + (state.employed ? state.salary / 12 * 12 : 0) - 3000,
+    happiness: Math.min(100, state.happiness + 2),
+    cash: state.cash + (state.employed ? state.salary : businessCashFlow * 12) - 3000,
     portfolio: updatedPortfolio,
+    businesses: businessList,
     clcIndex: newClcValue,
     lastClcValue: state.clcIndex,
     lastMarketReturn: actualReturn,
@@ -187,19 +309,24 @@ export const advanceYear = (state) => {
     newState = event.apply(newState);
   }
 
+  // Bankruptcy check
   newState.netWorth = calculateNetWorth(newState);
+  if (newState.netWorth < -50000) {
+    newState.bankrupt = true;
+  }
 
   return newState;
 };
 
 export const selectRandomEvent = (state) => {
-  const weights = LIFE_EVENTS.map(e => e.type === 'good' ? 1 : e.type === 'bad' ? 1 : 0.5);
+  const eventPool = state.employed ? CORPORATE_EVENTS : ENTREPRENEUR_EVENTS;
+  const weights = eventPool.map(e => e.type === 'good' ? 1.2 : e.type === 'bad' ? 1 : 0.5);
   const totalWeight = weights.reduce((a, b) => a + b, 0);
   let rand = Math.random() * totalWeight;
 
-  for (let i = 0; i < LIFE_EVENTS.length; i++) {
+  for (let i = 0; i < eventPool.length; i++) {
     rand -= weights[i];
-    if (rand <= 0) return LIFE_EVENTS[i];
+    if (rand <= 0) return eventPool[i];
   }
 
   return null;
@@ -268,6 +395,23 @@ export const performAction = (state, actionName) => {
         ...state,
         salary: getRaise ? Math.floor(state.salary * 1.08) : state.salary,
         reputation: getRaise ? state.reputation : Math.max(0, state.reputation - 10),
+        actionsUsed: state.actionsUsed + 1,
+      };
+    case 'quitAndEntrepreneur':
+      return {
+        ...state,
+        employed: false,
+        stress: Math.max(0, state.stress - 10),
+        happiness: Math.min(100, state.happiness + 20),
+        actionsUsed: state.actionsUsed + 1,
+      };
+    case 'goBackCorporate':
+      return {
+        ...state,
+        employed: true,
+        salary: Math.floor(state.salary * 0.8),
+        stress: Math.min(100, state.stress + 20),
+        happiness: Math.max(0, state.happiness - 15),
         actionsUsed: state.actionsUsed + 1,
       };
     default:
