@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-dark-bg text-white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.monospace {
+  font-family: 'Courier New', monospace;
+}
+
+.card {
+  @apply bg-dark-card border border-dark-border rounded-xl p-4;
+}
+
+.btn {
+  @apply px-4 py-2 rounded-lg font-medium transition-all;
+}
+
+.btn-primary {
+  @apply bg-green-600 hover:bg-green-700 text-white;
+}
+
+.btn-secondary {
+  @apply bg-dark-border hover:bg-gray-700 text-white;
+}
+
+.btn-danger {
+  @apply bg-red-600 hover:bg-red-700 text-white;
+}
+
+.btn:disabled {
+  @apply opacity-50 cursor-not-allowed hover:bg-gray-700;
+}
+
+.stat-bar {
+  @apply w-full bg-dark-border rounded-full h-2 overflow-hidden;
+}
+
+.stat-fill {
+  @apply h-full transition-all;
+}
+
+.number {
+  @apply monospace font-bold;
+}
+
+.positive {
+  @apply text-green-400;
+}
+
+.negative {
+  @apply text-red-400;
+}
+
+.neutral {
+  @apply text-gray-400;
+}
