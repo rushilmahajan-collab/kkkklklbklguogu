@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { calculateMonthlyProfit, calculateSalePrice } from '../businesses';
 
-export const BusinessesCard = ({ businesses, onSellBusiness }) => {
+export const BusinessesCard = ({ businesses, onSellBusiness, onSelectBusiness }) => {
   const [expanded, setExpanded] = useState(false);
 
   const formatMoney = (num) => {
@@ -80,12 +80,20 @@ export const BusinessesCard = ({ businesses, onSellBusiness }) => {
                   <div className="text-xs text-gray-400 mb-2">Manager on staff</div>
                 )}
 
-                <button
-                  onClick={() => onSellBusiness(business.id)}
-                  className="btn btn-secondary w-full text-xs py-1"
-                >
-                  Sell for {formatMoney(salePrice)}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onSelectBusiness(business)}
+                    className="btn btn-secondary flex-1 text-xs py-1"
+                  >
+                    Manage
+                  </button>
+                  <button
+                    onClick={() => onSellBusiness(business.id)}
+                    className="btn btn-danger flex-1 text-xs py-1"
+                  >
+                    Sell {formatMoney(salePrice)}
+                  </button>
+                </div>
               </div>
             );
           })}

@@ -145,7 +145,11 @@ export const TIER_1_BUSINESSES = [
 ];
 
 export const generateBusinessOffer = (tier = 1) => {
-  const businessTemplate = TIER_1_BUSINESSES[Math.floor(Math.random() * TIER_1_BUSINESSES.length)];
+  // Weight toward tier 1 (70%) vs tier 2+ (30%)
+  const useHigherTier = Math.random() < 0.2;
+  let pool = TIER_1_BUSINESSES;
+
+  const businessTemplate = pool[Math.floor(Math.random() * pool.length)];
 
   const variance = 0.2;
   const buyPrice = businessTemplate.buyPrice.min + Math.random() * (businessTemplate.buyPrice.max - businessTemplate.buyPrice.min);
@@ -154,13 +158,13 @@ export const generateBusinessOffer = (tier = 1) => {
   const annualProfit = revenue * margin;
 
   return {
-    id: `${businessTemplate.id}-${Date.now()}`,
+    id: `${businessTemplate.id}-${Date.now()}-${Math.random()}`,
     ...businessTemplate,
     buyPrice: Math.floor(buyPrice),
     annualRevenue: Math.floor(revenue),
     annualProfit: Math.floor(annualProfit),
     netMargin: margin,
-    condition: 80,
+    condition: 75 + Math.random() * 25,
     age: 0,
     manager: false,
   };

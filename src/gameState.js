@@ -500,7 +500,7 @@ export const growBusiness = (state, businessId, investAmount) => {
   const business = state.businesses.find(b => b.id === businessId);
   if (!business) return state;
 
-  const newCondition = Math.min(100, business.condition + Math.floor(investAmount / 100));
+  const newCondition = Math.min(100, business.condition + Math.floor(investAmount / 500));
   const newRevenue = Math.floor(business.annualRevenue * 1.05);
 
   return {
@@ -509,6 +509,22 @@ export const growBusiness = (state, businessId, investAmount) => {
     businesses: state.businesses.map(b =>
       b.id === businessId
         ? { ...b, condition: newCondition, annualRevenue: newRevenue, annualProfit: Math.floor(newRevenue * b.netMargin) }
+        : b
+    ),
+  };
+};
+
+export const hireManager = (state, businessId) => {
+  const business = state.businesses.find(b => b.id === businessId);
+  if (!business) return state;
+
+  const managerQuality = state.connections > 60 ? 0.4 : state.connections > 30 ? 0.3 : 0.2;
+
+  return {
+    ...state,
+    businesses: state.businesses.map(b =>
+      b.id === businessId
+        ? { ...b, manager: true, passiveCoeff: Math.min(1, b.passiveCoeff + managerQuality) }
         : b
     ),
   };

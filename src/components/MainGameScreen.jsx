@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { performAction, getAvailableActions, buyBusiness, sellBusiness } from '../gameState';
+import { performAction, getAvailableActions, buyBusiness, sellBusiness, growBusiness, hireManager } from '../gameState';
 import { PortfolioCard } from './PortfolioCard';
 import { BusinessesCard } from './BusinessesCard';
 import { BusinessBrowser } from './BusinessBrowser';
+import { BusinessActionsModal } from './BusinessActionsModal';
 
 export const MainGameScreen = ({ state, onAdvanceYear, onStateChange }) => {
   const [showBusinessBrowser, setShowBusinessBrowser] = useState(false);
+  const [selectedBusiness, setSelectedBusiness] = useState(null);
 
   const availableActions = getAvailableActions(state);
   const canAct = state.actionsUsed < state.actionSlots;
@@ -34,8 +36,28 @@ export const MainGameScreen = ({ state, onAdvanceYear, onStateChange }) => {
     onStateChange(newState);
   };
 
+  const handleGrowBusiness = (amount) => {
+    const newState = growBusiness(state, selectedBusiness.id, amount);
+    onStateChange(newState);
+    setSelectedBusiness(null);
+  };
+
+  const handleHireManager = () => {
+    const newState = hireManager(state, selectedBusiness.id);
+    onStateChange(newState);
+    setSelectedBusiness(null);
+  };
+
+  const handleSelectBusiness = (business) => {
+    setSelectedBusiness(business);
+  };
+
   const handleAdvanceYear = () => {
     onAdvanceYear();
+  };
+
+  const handleRetire = () => {
+    onStateChange({ ...state, bankrupt: false, age: 101 });
   };
 
   const formatMoney = (num) => {
@@ -116,6 +138,7 @@ export const MainGameScreen = ({ state, onAdvanceYear, onStateChange }) => {
         <BusinessesCard
           businesses={state.businesses}
           onSellBusiness={handleSellBusiness}
+          onSelectBusiness={handleSelectBusiness}
         />
 
         {/* Status */}
@@ -163,12 +186,23 @@ export const MainGameScreen = ({ state, onAdvanceYear, onStateChange }) => {
         </div>
 
         {/* End Year Button */}
-        <button
-          onClick={handleAdvanceYear}
-          className="btn btn-primary w-full py-3 font-bold text-center"
-        >
-          End Year →
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleAdvanceYear}
+            className="btn btn-primary flex-1 py-3 font-bold"
+          >
+            End Year →
+          </button>
+          {!state.employed && (
+            <button
+              onClick={handleRetire}
+              className="btn btn-secondary flex-1 py-3 font-bold"
+              title="End the game and see your score"
+            >
+              Retire
+            </button>
+          )}
+        </div>
       </div>
 
       {showBusinessBrowser && (
@@ -176,6 +210,15 @@ export const MainGameScreen = ({ state, onAdvanceYear, onStateChange }) => {
           state={state}
           onBuyBusiness={handleBuyBusiness}
           onClose={() => setShowBusinessBrowser(false)}
+        />
+      )}
+
+      {selectedBusiness && (
+        <BusinessActionsModal
+          business={selectedBusiness}
+          onGrow={handleGrowBusiness}
+          onHireManager={handleHireManager}
+          onClose={() => setSelectedBusiness(null)}
         />
       )}
     </div>
