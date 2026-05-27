@@ -414,6 +414,9 @@ export const performAction = (state, actionName) => {
         happiness: Math.max(0, state.happiness - 15),
         actionsUsed: state.actionsUsed + 1,
       };
+    case 'invest':
+      // This action opens a modal - no state change here
+      return state;
     default:
       return state;
   }
@@ -430,6 +433,7 @@ export const getAvailableActions = (state) => {
       { id: 'sideHustle', label: 'Side Hustle', desc: 'Earn $5K-$20K extra, risk getting fired' },
       { id: 'skillUp', label: 'Skill Up', desc: 'Spend $3K on courses, unlock higher salary' },
       { id: 'askRaise', label: 'Ask for Raise', desc: 'Success based on reputation' },
+      { id: 'invest', label: 'Invest', desc: 'Buy index fund (no action slot cost)' },
     );
 
     if (state.age >= 25 || state.cash > 100000) {
@@ -442,7 +446,7 @@ export const getAvailableActions = (state) => {
   } else {
     actions.push(
       { id: 'buyBusiness', label: 'Buy Business', desc: 'Browse available businesses' },
-      { id: 'growBusiness', label: 'Grow Business', desc: 'Invest in an owned business' },
+      { id: 'invest', label: 'Invest', desc: 'Buy index fund (no action slot cost)' },
     );
 
     if (state.businesses.length > 0) {
@@ -527,5 +531,18 @@ export const hireManager = (state, businessId) => {
         ? { ...b, manager: true, passiveCoeff: Math.min(1, b.passiveCoeff + managerQuality) }
         : b
     ),
+  };
+};
+
+export const investInMarket = (state, amount) => {
+  if (state.cash < amount) return state;
+
+  return {
+    ...state,
+    cash: state.cash - amount,
+    portfolio: {
+      ...state.portfolio,
+      indexFund: state.portfolio.indexFund + amount,
+    },
   };
 };

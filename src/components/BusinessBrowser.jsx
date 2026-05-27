@@ -7,9 +7,9 @@ export const BusinessBrowser = ({ state, onBuyBusiness, onClose }) => {
   const [selectedBusiness, setSelectedBusiness] = useState(null);
 
   useEffect(() => {
-    const generated = Array.from({ length: 5 }, () => generateBusinessOffer());
+    const generated = Array.from({ length: 5 }, () => generateBusinessOffer(state.cash, state.connections));
     setBusinesses(generated);
-  }, []);
+  }, [state.cash, state.connections]);
 
   const handleBuy = (business) => {
     onBuyBusiness(business);

@@ -1,3 +1,136 @@
+export const TIER_2_BUSINESSES = [
+  {
+    id: 'R01',
+    name: 'Independent Restaurant',
+    category: 'Food & Bev',
+    buyPrice: { min: 100000, max: 350000 },
+    annualRevenue: { min: 400000, max: 1200000 },
+    netMargin: 0.06,
+    passiveCoeff: 0.1,
+    failureRate: 0.12,
+    exitMultiple: { min: 2, max: 2.5 },
+    managerCost: 0.12,
+    flavor: 'Thin margins, long hours, pure love. Or pure loss.',
+  },
+  {
+    id: 'R02',
+    name: 'Pizza Shop',
+    category: 'Food & Bev',
+    buyPrice: { min: 150000, max: 400000 },
+    annualRevenue: { min: 400000, max: 1000000 },
+    netMargin: 0.15,
+    passiveCoeff: 0.2,
+    failureRate: 0.10,
+    exitMultiple: { min: 2.5, max: 3 },
+    managerCost: 0.10,
+    flavor: 'Higher margin than full-service — delivery is king',
+  },
+  {
+    id: 'B01',
+    name: 'Laundromat',
+    category: 'Passive Assets',
+    buyPrice: { min: 200000, max: 500000 },
+    annualRevenue: { min: 150000, max: 350000 },
+    netMargin: 0.27,
+    passiveCoeff: 0.7,
+    failureRate: 0.04,
+    exitMultiple: { min: 3, max: 4 },
+    managerCost: 0.05,
+    flavor: 'Card readers + smart machines = semi-passive cash machine',
+  },
+  {
+    id: 'B02',
+    name: 'Express Car Wash',
+    category: 'Auto Services',
+    buyPrice: { min: 300000, max: 500000 },
+    annualRevenue: { min: 250000, max: 500000 },
+    netMargin: 0.30,
+    passiveCoeff: 0.65,
+    failureRate: 0.05,
+    exitMultiple: { min: 4, max: 6 },
+    managerCost: 0.06,
+    flavor: 'Membership = recurring revenue. PE loves these.',
+  },
+  {
+    id: 'B03',
+    name: 'Auto Repair Shop',
+    category: 'Auto Services',
+    buyPrice: { min: 150000, max: 400000 },
+    annualRevenue: { min: 400000, max: 1200000 },
+    netMargin: 0.15,
+    passiveCoeff: 0.2,
+    failureRate: 0.08,
+    exitMultiple: { min: 2.5, max: 3 },
+    managerCost: 0.10,
+    flavor: '70% of US car repair is independent shops. Steady demand.',
+  },
+  {
+    id: 'H01',
+    name: 'HVAC Contractor',
+    category: 'Home Services',
+    buyPrice: { min: 200000, max: 500000 },
+    annualRevenue: { min: 400000, max: 1500000 },
+    netMargin: 0.10,
+    passiveCoeff: 0.3,
+    failureRate: 0.08,
+    exitMultiple: { min: 3, max: 4 },
+    managerCost: 0.10,
+    flavor: 'Top quartile does 13.2% net. Service mix drives margin.',
+  },
+  {
+    id: 'H02',
+    name: 'Plumbing Contractor',
+    category: 'Home Services',
+    buyPrice: { min: 200000, max: 500000 },
+    annualRevenue: { min: 500000, max: 1500000 },
+    netMargin: 0.14,
+    passiveCoeff: 0.3,
+    failureRate: 0.07,
+    exitMultiple: { min: 3, max: 4 },
+    managerCost: 0.10,
+    flavor: 'Emergency calls = premium pricing',
+  },
+  {
+    id: 'H04',
+    name: 'Pest Control Service',
+    category: 'Home Services',
+    buyPrice: { min: 150000, max: 400000 },
+    annualRevenue: { min: 300000, max: 1000000 },
+    netMargin: 0.20,
+    passiveCoeff: 0.45,
+    failureRate: 0.05,
+    exitMultiple: { min: 3.5, max: 4.5 },
+    managerCost: 0.08,
+    flavor: 'Recurring subscription model. PE darling.',
+  },
+  {
+    id: 'PR01',
+    name: 'Accounting Practice',
+    category: 'Professional',
+    buyPrice: { min: 150000, max: 500000 },
+    annualRevenue: { min: 200000, max: 700000 },
+    netMargin: 0.30,
+    passiveCoeff: 0.15,
+    failureRate: 0.05,
+    exitMultiple: { min: 3, max: 4 },
+    managerCost: 0.12,
+    flavor: 'Among highest margins in services',
+  },
+  {
+    id: 'PR02',
+    name: 'Insurance Agency',
+    category: 'Professional',
+    buyPrice: { min: 200000, max: 500000 },
+    annualRevenue: { min: 300000, max: 800000 },
+    netMargin: 0.30,
+    passiveCoeff: 0.55,
+    failureRate: 0.03,
+    exitMultiple: { min: 4, max: 5 },
+    managerCost: 0.08,
+    flavor: 'Commission residuals = annuity. Semi-passive gold.',
+  },
+];
+
 export const TIER_1_BUSINESSES = [
   {
     id: 'S01',
@@ -144,23 +277,36 @@ export const TIER_1_BUSINESSES = [
   },
 ];
 
-export const generateBusinessOffer = (tier = 1) => {
-  // Weight toward tier 1 (70%) vs tier 2+ (30%)
-  const useHigherTier = Math.random() < 0.2;
+export const generateBusinessOffer = (playerCash = 0, playerConnections = 0) => {
+  // Unlock Tier 2 as player accumulates capital and connections
   let pool = TIER_1_BUSINESSES;
 
-  const businessTemplate = pool[Math.floor(Math.random() * pool.length)];
+  if (playerCash > 75000) {
+    // Add some Tier 2 options
+    pool = [...TIER_1_BUSINESSES, ...TIER_2_BUSINESSES];
+  }
 
-  const variance = 0.2;
+  // Favor businesses you can afford
+  const affordableBusinesses = pool.filter(b => playerCash > b.buyPrice.min);
+  const preferredPool = affordableBusinesses.length > 2 ? affordableBusinesses : pool;
+
+  const businessTemplate = preferredPool[Math.floor(Math.random() * preferredPool.length)];
+
   const buyPrice = businessTemplate.buyPrice.min + Math.random() * (businessTemplate.buyPrice.max - businessTemplate.buyPrice.min);
   const revenue = businessTemplate.annualRevenue.min + Math.random() * (businessTemplate.annualRevenue.max - businessTemplate.annualRevenue.min);
   const margin = businessTemplate.netMargin * (0.8 + Math.random() * 0.4);
   const annualProfit = revenue * margin;
 
+  // Connections improve deal quality
+  let discountFactor = 1;
+  if (playerConnections > 70) discountFactor = 0.85;
+  else if (playerConnections > 50) discountFactor = 0.9;
+  else if (playerConnections > 30) discountFactor = 0.95;
+
   return {
     id: `${businessTemplate.id}-${Date.now()}-${Math.random()}`,
     ...businessTemplate,
-    buyPrice: Math.floor(buyPrice),
+    buyPrice: Math.floor(buyPrice * discountFactor),
     annualRevenue: Math.floor(revenue),
     annualProfit: Math.floor(annualProfit),
     netMargin: margin,

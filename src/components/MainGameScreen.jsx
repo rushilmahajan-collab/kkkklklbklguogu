@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { performAction, getAvailableActions, buyBusiness, sellBusiness, growBusiness, hireManager } from '../gameState';
+import { performAction, getAvailableActions, buyBusiness, sellBusiness, growBusiness, hireManager, investInMarket } from '../gameState';
 import { PortfolioCard } from './PortfolioCard';
 import { BusinessesCard } from './BusinessesCard';
 import { BusinessBrowser } from './BusinessBrowser';
 import { BusinessActionsModal } from './BusinessActionsModal';
+import { InvestModal } from './InvestModal';
 
 export const MainGameScreen = ({ state, onAdvanceYear, onStateChange }) => {
   const [showBusinessBrowser, setShowBusinessBrowser] = useState(false);
   const [selectedBusiness, setSelectedBusiness] = useState(null);
+  const [showInvestModal, setShowInvestModal] = useState(false);
 
   const availableActions = getAvailableActions(state);
   const canAct = state.actionsUsed < state.actionSlots;
@@ -18,11 +20,20 @@ export const MainGameScreen = ({ state, onAdvanceYear, onStateChange }) => {
       setShowBusinessBrowser(true);
       return;
     }
+    if (actionId === 'invest') {
+      setShowInvestModal(true);
+      return;
+    }
     if (actionId === 'sellBusiness') {
       // This is handled per-business via the BusinessesCard
       return;
     }
     const newState = performAction(state, actionId);
+    onStateChange(newState);
+  };
+
+  const handleInvest = (amount) => {
+    const newState = investInMarket(state, amount);
     onStateChange(newState);
   };
 
@@ -146,14 +157,20 @@ export const MainGameScreen = ({ state, onAdvanceYear, onStateChange }) => {
           <div className="mb-2">
             {state.employed ? (
               <div>
-                <div className="text-gray-400">Position</div>
-                <div className="font-semibold">{state.career}</div>
-                <div className="text-gray-500 mt-1">
+                <div className="text-gray-400 text-xs uppercase tracking-widest mb-1">📊 Corporate Grind</div>
+                <div className="font-semibold mb-2">{state.career}</div>
+                <div className="text-gray-500">
                   Salary: <span className="number">{formatMoney(state.salary)}</span>/yr
                 </div>
               </div>
             ) : (
-              <div className="text-amber-400">Unemployed — find a job or go entrepreneur</div>
+              <div>
+                <div className="text-amber-400 text-xs uppercase tracking-widest mb-1">🚀 Entrepreneur</div>
+                <div className="text-gray-300 text-sm font-semibold mb-2">Building Your Empire</div>
+                <div className="text-gray-500">
+                  Businesses: <span className="number">{state.businesses.length}</span>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -219,6 +236,14 @@ export const MainGameScreen = ({ state, onAdvanceYear, onStateChange }) => {
           onGrow={handleGrowBusiness}
           onHireManager={handleHireManager}
           onClose={() => setSelectedBusiness(null)}
+        />
+      )}
+
+      {showInvestModal && (
+        <InvestModal
+          state={state}
+          onInvest={handleInvest}
+          onClose={() => setShowInvestModal(false)}
         />
       )}
     </div>
